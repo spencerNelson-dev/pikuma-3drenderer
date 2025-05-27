@@ -12,6 +12,7 @@ camera_position : vec3_t = {0, 0, -5}
 cube_rotaion : vec3_t = {0, 0, 0}
 
 is_running              : bool
+previous_frame_time : u32
 
 setup :: proc() {
     color_buffer = make([]u32, window_width * window_height)
@@ -60,6 +61,19 @@ project :: proc(point: vec3_t) -> vec2_t {
 }
 
 update :: proc() {
+    // simple wating while loop
+    // for !sdl.TICKS_PASSED(
+    //     sdl.GetTicks(), 
+    //     previous_frame_time + FRAME_TARGET_TIME){}
+
+    // better for sharing cpu resources
+    time_to_wait := FRAME_TARGET_TIME - (sdl.GetTicks() - previous_frame_time)
+    if time_to_wait > 0 && time_to_wait <= FRAME_TARGET_TIME {
+        sdl.Delay(time_to_wait)
+    }
+    
+    previous_frame_time = sdl.GetTicks()
+
     cube_rotaion.y += 0.01
     cube_rotaion.x += 0.01
     cube_rotaion.z += 0.01
@@ -88,12 +102,16 @@ render :: proc() {
 
     for i in 0..<N_POINTS {
         projected_point := projected_points[i]
+        color : u32 = 0xFFFFFF00
+        if i == 0 {
+            color = 0xFFFF0000
+        }
         draw_rect(
             cast(i32)projected_point.x + window_width / 2,
             cast(i32)projected_point.y + window_height / 2,
             4,
             4,
-            0xFFFFFF00
+            color
         )
     }
 

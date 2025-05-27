@@ -6,6 +6,9 @@ import sdl "vendor:sdl2"
 
 Color :: u32
 
+FPS :: 30
+FRAME_TARGET_TIME ::(1000 / FPS)
+
 color_buffer            : []u32
 color_buffer_texture    : ^sdl.Texture
 
