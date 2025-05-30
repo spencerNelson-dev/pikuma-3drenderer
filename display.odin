@@ -2,6 +2,7 @@ package main
 
 import "core:fmt"
 import "core:os"
+import "core:math"
 import sdl "vendor:sdl2"
 
 Color :: u32
@@ -140,5 +141,31 @@ draw_rect :: proc(x: i32, y: i32, w: i32, h: i32, color: u32) {
 draw_pixel :: proc(x : i32, y: i32, color: Color){
     if x >= 0 && x < window_width && y >=0 && y < window_height {
         color_buffer[(window_width * y) + x] = color
+    }
+}
+
+draw_line :: proc(p0: vec2_t, p1: vec2_t, color: Color) {
+    delta_x := p1.x - p0.x;
+    delta_y := p1.y - p0.y;
+
+    side_length : f32
+    if abs(delta_x) >= abs(delta_y) {
+        side_length = abs(delta_x)
+    } else {
+        side_length = abs(delta_y)
+    }
+
+    // find how much we should increment in both x and y each step
+    x_inc : f32 = delta_x / side_length
+    y_inc : f32 = delta_y / side_length
+
+    current_x := p0.x
+    current_y := p0.y
+
+    // odin math.round is a floor function
+    for i := 0; i < cast(int)side_length; i += 1 {
+        draw_pixel(cast(i32)math.round(current_x), cast(i32)math.round(current_y), color)
+        current_x += x_inc
+        current_y += y_inc
     }
 }

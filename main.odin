@@ -4,12 +4,12 @@ import "core:fmt"
 import "core:os"
 import sdl "vendor:sdl2"
 
-N_POINTS :: 9 * 9 * 9
-cube_points : [N_POINTS]vec3_t
-projected_points : [N_POINTS]vec2_t
-fov_factor : f32 = 640
+triangles_to_render : [N_MESH_FACES]triangle_t
+
 camera_position : vec3_t = {0, 0, -5}
 cube_rotaion : vec3_t = {0, 0, 0}
+
+fov_factor : f32 = 640
 
 is_running              : bool
 previous_frame_time : u32
@@ -22,21 +22,8 @@ setup :: proc() {
         .ARGB8888,
         .STREAMING,
         window_width,
-        window_height
+        window_height,
     )
-
-    point_count : int
-
-    for x: f32 = -1; x <= 1; x += 0.25 {
-        for y: f32 = -1; y <= 1; y += 0.25 {
-            for z: f32 = -1; z <= 1; z += 0.25 {
-                new_point : vec3_t = {x, y, z}
-                cube_points[point_count] = new_point
-                point_count += 1
-            }
-        }
-    }
-
 }
 
 process_input :: proc() {
@@ -78,20 +65,54 @@ update :: proc() {
     cube_rotaion.x += 0.01
     cube_rotaion.z += 0.01
 
-    for i in 0..<N_POINTS {
-        point := cube_points[i]
+    // loop all triangle faces
+    for i := 0; i < N_MESH_FACES; i += 1 {
+        mesh_face := mesh_faces[i]
+        
+        face_vertices : [3]vec3_t;
+        face_vertices[0] = mesh_vertices[mesh_face.a - 1]
+        face_vertices[1] = mesh_vertices[mesh_face.b - 1]
+        face_vertices[2] = mesh_vertices[mesh_face.c - 1]
 
-        transform_point := vec3_rotate_x(point, cube_rotaion.x)
-        transform_point = vec3_rotate_y(transform_point, cube_rotaion.y)
-        transform_point = vec3_rotate_z(transform_point, cube_rotaion.z)
+        projected_triangle : triangle_t
 
-        // move point away from the camera
-        transform_point.z -= camera_position.z
+        // loop all three verticies and apply transformation
+        for j := 0; j < 3; j += 1{
+            transformed_vertex : vec3_t = face_vertices[j]
 
-        projected_point := project(transform_point)
+            transformed_vertex = vec3_rotate_x(transformed_vertex, cube_rotaion.x)
+            transformed_vertex = vec3_rotate_y(transformed_vertex, cube_rotaion.y)
+            transformed_vertex = vec3_rotate_z(transformed_vertex, cube_rotaion.z)
 
-        projected_points[i] = projected_point
+            // translate vertex away from camera
+            transformed_vertex.z += camera_position.z
+
+            projected_point : vec2_t = project(transformed_vertex)
+
+            // scale and project to center of screen
+            projected_point.x += cast(f32) window_width / 2
+            projected_point.y += cast(f32) window_height / 2
+
+            projected_triangle.points[j] = projected_point
+        }
+
+        triangles_to_render[i] = projected_triangle
     }
+
+    // for i in 0..<N_POINTS {
+    //     point := cube_points[i]
+
+    //     transform_point := vec3_rotate_x(point, cube_rotaion.x)
+    //     transform_point = vec3_rotate_y(transform_point, cube_rotaion.y)
+    //     transform_point = vec3_rotate_z(transform_point, cube_rotaion.z)
+
+    //     // move point away from the camera
+    //     transform_point.z -= camera_position.z
+
+    //     projected_point := project(transform_point)
+
+    //     projected_points[i] = projected_point
+    // }
 }
 
 render :: proc() {
@@ -100,19 +121,16 @@ render :: proc() {
 
     draw_grid(0xFF222222, 10)
 
-    for i in 0..<N_POINTS {
-        projected_point := projected_points[i]
-        color : u32 = 0xFFFFFF00
-        if i == 0 {
-            color = 0xFFFF0000
-        }
-        draw_rect(
-            cast(i32)projected_point.x + window_width / 2,
-            cast(i32)projected_point.y + window_height / 2,
-            4,
-            4,
-            color
-        )
+    for i in 6..<8 {
+        triangle := triangles_to_render[i]
+        draw_rect(cast(i32)triangle.points[0].x, cast(i32)triangle.points[0].y, 3, 3, 0xFFFFFF00)
+        draw_rect(cast(i32)triangle.points[1].x, cast(i32)triangle.points[1].y, 3, 3, 0xFFFFFF00)
+        draw_rect(cast(i32)triangle.points[2].x, cast(i32)triangle.points[2].y, 3, 3, 0xFFFFFF00)
+
+        // draw triangle lines
+        draw_line(triangle.points[0], triangle.points[1], 0xFF00FF00)
+        draw_line(triangle.points[1], triangle.points[2], 0xFF00FF00)
+        draw_line(triangle.points[0], triangle.points[2], 0xFF00FF00)
     }
 
     render_color_buffer()
